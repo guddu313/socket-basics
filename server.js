@@ -9,6 +9,34 @@ app.use(express.static(__dirname + '/public'));
 
 var clientinfo = {};
 
+//Send current users to socket
+function sendCurrentUsers(socket)
+{
+	var info = clientinfo[socket.id];
+	var users = [];
+	
+	if(typeof info === 'undefined')
+	{
+		return;
+	}
+	
+	//in-built methods Object.keys
+	Object.keys(clientinfo).forEach( function(socketId){
+		var userinfo = clientinfo[socketId];
+		
+		if(info.room === userinfo.room)
+		{
+			users.push(userinfo.name);
+		}
+	});
+	
+	socket.emit('message', {
+		name: 'System',
+		text: 'Current users ' + users.join(', '),
+		timestamp: moment().valueOf()
+	});
+}
+
 io.on('connection',function(socket){
 	console.log('User connected!!!');
 	
@@ -42,8 +70,16 @@ io.on('connection',function(socket){
 
 	socket.on('message', function(message){
 		console.log('Message Received:' + message.text);
-		message.timestamp = moment().valueOf();
-		io.to(clientinfo[socket.id].room).emit('message', message);
+		
+		if(message.text === '@currentUsers')
+		{
+			sendCurrentUsers(socket);
+		}
+		else
+		{
+			message.timestamp = moment().valueOf();
+			io.to(clientinfo[socket.id].room).emit('message', message);			
+		}
 	});
 	socket.emit('message', {
 		name: 'System',
